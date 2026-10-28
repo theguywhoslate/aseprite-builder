@@ -57,11 +57,7 @@ jobs:
         run: |
           Invoke-WebRequest -Uri "https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/Skia-Windows-Release-x64.zip" -OutFile "skia.zip" -UseBasicParsing
           Expand-Archive -Force "skia.zip" "skia"
-          
-          # Download icudtl.dat (required for ICU support)
-          mkdir skia\out\Release-x64 -Force
-          Invoke-WebRequest -Uri "https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/icudtl.dat" -OutFile "skia/out/Release-x64/icudtl.dat" -UseBasicParsing
-          Write-Host "Skia extracted successfully with icudtl.dat"
+          Write-Host "Skia extracted successfully"
 
       - name: Initialize MSVC Environment
         uses: ilammy/msvc-dev-cmd@v1
@@ -78,6 +74,7 @@ jobs:
             -DSKIA_LIBRARY_DIR="$env:GITHUB_WORKSPACE\skia\out\Release-x64" `
             -DSKIA_LIBRARY="$env:GITHUB_WORKSPACE\skia\out\Release-x64\skia.lib" `
             -DENABLE_SCRIPTING=OFF `
+            -DENABLE_OPENSSL=OFF `
             -DENABLE_UPDATER=OFF `
             -DENABLE_TESTS=OFF `
             "$env:GITHUB_WORKSPACE\aseprite"
@@ -92,7 +89,7 @@ jobs:
         run: |
           cd build\bin
           "# This file is here so Aseprite behaves as a portable program" | Out-File -FilePath "aseprite.ini" -Encoding ASCII
-          Compress-Archive -Path * -DestinationPath "$env:GITHUB_WORKSPACE\Aseprite-${{ needs.fetch-version.outputs.version }}-Windows.zip"
+          Compress-Archive -Path aseprite.exe, aseprite.ini, data, icudtl.dat -DestinationPath "$env:GITHUB_WORKSPACE\Aseprite-${{ needs.fetch-version.outputs.version }}-Windows.zip"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -124,9 +121,8 @@ jobs:
 
       - name: Download & Extract Skia
         run: |
-          wget https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/Skia-Linux-Release-x64-libstdc++.zip
-          unzip Skia-Linux-Release-x64-libstdc++.zip -d skia
-          wget https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/icudtl.dat -O skia/out/Release-x64/icudtl.dat
+          wget https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/Skia-Linux-Release-x64.zip
+          unzip Skia-Linux-Release-x64.zip -d skia
 
       - name: Configure Build
         run: |
@@ -139,6 +135,7 @@ jobs:
             -DCMAKE_CXX_FLAGS=-stdlib=libstdc++ \
             -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libstdc++ \
             -DLAF_BACKEND=skia \
+            -DENABLE_OPENSSL=OFF \
             -DSKIA_DIR=$GITHUB_WORKSPACE/skia \
             -DSKIA_LIBRARY_DIR=$GITHUB_WORKSPACE/skia/out/Release-x64 \
             -DENABLE_UPDATER=OFF \
@@ -224,7 +221,6 @@ jobs:
         run: |
           wget https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/Skia-macOS-Release-arm64.zip
           unzip Skia-macOS-Release-arm64.zip -d skia
-          wget https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/icudtl.dat -O skia/out/Release-arm64/icudtl.dat
 
       - name: Configure Build
         run: |
@@ -260,7 +256,7 @@ jobs:
   build-macos-x64:
     name: Build macOS (Intel)
     needs: fetch-version
-    runs-on: macos-13
+    runs-on: macos-15-intel
     permissions:
       contents: write
     steps:
@@ -279,7 +275,6 @@ jobs:
         run: |
           wget https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/Skia-macOS-Release-x64.zip
           unzip Skia-macOS-Release-x64.zip -d skia
-          wget https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/icudtl.dat -O skia/out/Release-x64/icudtl.dat
 
       - name: Configure Build
         run: |
@@ -287,7 +282,7 @@ jobs:
           cd build
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14 \
             -DLAF_BACKEND=skia \
             -DSKIA_DIR=$GITHUB_WORKSPACE/skia \
             -DSKIA_LIBRARY_DIR=$GITHUB_WORKSPACE/skia/out/Release-x64 \
